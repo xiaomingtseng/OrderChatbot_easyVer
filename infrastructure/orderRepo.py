@@ -1,9 +1,8 @@
 from infrastructure.database import Database
 
 class OrderRepo:
-    def __init__(self):
-        self.db = Database()
-        self.collection = self.db['orders']  # 假設使用 MongoDB
+    def __init__(self, db):
+        self.collection = db.get_collection('orders')  # 使用 get_collection 方法
 
     def add_order(self, order_data):
         self.collection.insert_one(order_data)

@@ -13,8 +13,9 @@ app = Flask(__name__)
 # 模擬用戶狀態儲存（可使用 Redis 或資料庫替代）
 user_state = {}
 
-# 初始化 OrderRepo
-order_repo = OrderRepo()
+# 初始化 Database 和 OrderRepo
+db = Database()  # 使用預設的資料庫名稱 'easyorder'
+order_repo = OrderRepo(db)
 
 # LINE Messaging API Token
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
