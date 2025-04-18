@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import os
 from infrastructure.orderRepo import OrderRepo  # 引入 OrderRepo
-
+from infrastructure.database import Database  # 引入 Database
 # 載入 LINE Message API 相關函式庫
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
@@ -14,7 +14,8 @@ app = Flask(__name__)
 user_state = {}
 
 # 初始化 OrderRepo
-order_repo = OrderRepo(None)  # 假設 `OrderRepo` 已經處理好資料庫連線
+db = Database()  # 假設你有一個 Database 類別來處理 MongoDB 連接
+order_repo = OrderRepo(db)
 
 # LINE Messaging API Token
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
