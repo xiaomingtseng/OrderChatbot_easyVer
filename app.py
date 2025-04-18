@@ -14,8 +14,7 @@ app = Flask(__name__)
 user_state = {}
 
 # 初始化 OrderRepo
-db = Database()  # 假設你有一個 Database 類別來處理 MongoDB 連接
-order_repo = OrderRepo(db)
+order_repo = OrderRepo()
 
 # LINE Messaging API Token
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')

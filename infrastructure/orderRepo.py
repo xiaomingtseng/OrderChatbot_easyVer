@@ -1,8 +1,8 @@
 from infrastructure.database import Database
 
 class OrderRepo:
-    def __init__(self, db):
-        self.db = db
+    def __init__(self):
+        self.db = Database()
         self.collection = self.db['orders']  # 假設使用 MongoDB
 
     def add_order(self, order_data):
