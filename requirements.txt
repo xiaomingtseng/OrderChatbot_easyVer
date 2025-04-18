@@ -3,4 +3,6 @@ line-bot-sdk
 gunicorn
 flask-cors
 pymongo
+dotenv
+python-dotenv
 requests
