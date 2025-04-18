@@ -19,44 +19,6 @@ LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 LINE_REPLY_API = 'https://api.line.me/v2/bot/message/reply'
  
 
-# 處理 LINE Webhook
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    body = request.json
-    events = body.get('events', [])
-    reply_token = body['events'][0]['replyToken']
-    for event in events:
-        user_id = event['source']['userId']
-        
-        # 處理 Postback 事件
-        if event['type'] == 'postback':
-            data = event['postback']['data']
-            if data == 'action=start_order':
-                # 設置用戶狀態為等待餐點名稱
-                user_state[user_id] = {'step': 'waiting_for_meal'}
-                reply_message(reply_token, "請輸入餐點名稱：")
-        
-        # 處理文字訊息事件
-        elif event['type'] == 'message' and event['message']['type'] == 'text':
-            user_message = event['message']['text']
-            user_status = user_state.get(user_id, {})
-            
-            if user_status.get('step') == 'waiting_for_meal':
-                # 儲存餐點名稱，要求輸入金額
-                user_state[user_id]['meal_name'] = user_message
-                user_state[user_id]['step'] = 'waiting_for_price'
-                reply_message(reply_token, "請輸入金額：")
-            
-            elif user_status.get('step') == 'waiting_for_price':
-                # 儲存金額並回復確認訊息
-                meal_name = user_status.get('meal_name')
-                price = user_message
-                reply_message(reply_token, f"餐點：{meal_name}\n金額：{price} 元\n感謝您的點餐！")
-                # 清除用戶狀態
-                user_state.pop(user_id, None)
-    
-    return 'OK', 200
-
 # 回復訊息給使用者
 def reply_message(reply_token, text):
     headers = {
@@ -67,7 +29,74 @@ def reply_message(reply_token, text):
         'replyToken': reply_token,
         'messages': [{'type': 'text', 'text': text}]
     }
-    requests.post(LINE_REPLY_API, headers=headers, json=data)
+    try:
+        response = requests.post(LINE_REPLY_API, headers=headers, json=data)
+        if response.status_code != 200:
+            print(f"Error in reply_message: {response.status_code}, {response.text}")
+            return {'error': response.text}, response.status_code
+    except Exception as e:
+        print(f"Exception in reply_message: {str(e)}")
+        return {'error': str(e)}, 500
+
+
+# 處理 LINE Webhook
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    try:
+        body = request.json
+        print(f"Request body: {body}")  # 調試用
+        events = body.get('events', [])
+        if not events:
+            return {'error': 'No events found'}, 400
+
+        for event in events:
+            reply_token = event.get('replyToken')
+            if not reply_token:
+                print("Missing replyToken")
+                continue
+
+            user_id = event['source'].get('userId')
+            if not user_id:
+                print("Missing userId")
+                continue
+
+            # 處理 Postback 事件
+            if event['type'] == 'postback':
+                data = event['postback'].get('data')
+                if not data:
+                    print("Missing postback data")
+                    continue
+
+                if data == 'action=start_order':
+                    # 設置用戶狀態為等待餐點名稱
+                    user_state[user_id] = {'step': 'waiting_for_meal'}
+                    reply_message(reply_token, "請輸入餐點名稱：")
+
+            # 處理文字訊息事件
+            elif event['type'] == 'message' and event['message']['type'] == 'text':
+                user_message = event['message']['text']
+                user_status = user_state.get(user_id, {})
+
+                if user_status.get('step') == 'waiting_for_meal':
+                    # 儲存餐點名稱，要求輸入金額
+                    user_state[user_id]['meal_name'] = user_message
+                    user_state[user_id]['step'] = 'waiting_for_price'
+                    reply_message(reply_token, "請輸入金額：")
+
+                elif user_status.get('step') == 'waiting_for_price':
+                    # 儲存金額並回復確認訊息
+                    meal_name = user_status.get('meal_name')
+                    price = user_message
+                    reply_message(reply_token, f"餐點：{meal_name}\n金額：{price} 元\n感謝您的點餐！")
+                    # 清除用戶狀態
+                    user_state.pop(user_id, None)
+
+        return 'OK', 200
+
+    except Exception as e:
+        print(f"Exception in webhook: {str(e)}")
+        return {'error': str(e)}, 500
+
 
 if __name__ == '__main__':
     app.run(port=5000)
