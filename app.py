@@ -1,23 +1,25 @@
 from flask import Flask, request, jsonify
 import requests
+import os
+from infrastructure.orderRepo import OrderRepo  # 引入 OrderRepo
 
 # 載入 LINE Message API 相關函式庫
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
-import os
-
 
 app = Flask(__name__)
 
 # 模擬用戶狀態儲存（可使用 Redis 或資料庫替代）
 user_state = {}
 
+# 初始化 OrderRepo
+order_repo = OrderRepo(None)  # 假設 `OrderRepo` 已經處理好資料庫連線
+
 # LINE Messaging API Token
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 
 LINE_REPLY_API = 'https://api.line.me/v2/bot/message/reply'
- 
 
 # 回復訊息給使用者
 def reply_message(reply_token, text):
@@ -37,7 +39,6 @@ def reply_message(reply_token, text):
     except Exception as e:
         print(f"Exception in reply_message: {str(e)}")
         return {'error': str(e)}, 500
-
 
 # 處理 LINE Webhook
 @app.route('/webhook', methods=['POST'])
@@ -72,6 +73,29 @@ def webhook():
                     user_state[user_id] = {'step': 'waiting_for_meal'}
                     reply_message(reply_token, "請輸入餐點名稱：")
 
+                elif data == 'action=view_cart':
+                    # 查看購物車
+                    orders = order_repo.get_orders(user_id)
+                    if not orders:
+                        reply_message(reply_token, "您的購物車是空的！")
+                    else:
+                        cart_details = "\n".join([f"{order['meal_name']} - {order['price']} 元" for order in orders])
+                        reply_message(reply_token, f"您的購物車內容：\n{cart_details}")
+
+                elif data == 'action=clear_cart':
+                    # 清空購物車
+                    order_repo.clear_orders(user_id)
+                    reply_message(reply_token, "您的購物車已清空！")
+
+                elif data == 'action=total_price':
+                    # 計算總金額
+                    orders = order_repo.get_orders(user_id)
+                    if not orders:
+                        reply_message(reply_token, "您的購物車是空的！")
+                    else:
+                        total_price = sum(int(order['price']) for order in orders)
+                        reply_message(reply_token, f"您的購物車總金額為：{total_price} 元")
+
             # 處理文字訊息事件
             elif event['type'] == 'message' and event['message']['type'] == 'text':
                 user_message = event['message']['text']
@@ -87,6 +111,11 @@ def webhook():
                     # 儲存金額並回復確認訊息
                     meal_name = user_status.get('meal_name')
                     price = user_message
+
+                    # 將餐點數據存入資料庫
+                    order_data = {"user_id": user_id, "meal_name": meal_name, "price": price}
+                    order_repo.add_order(order_data)
+
                     reply_message(reply_token, f"餐點：{meal_name}\n金額：{price} 元\n感謝您的點餐！")
                     # 清除用戶狀態
                     user_state.pop(user_id, None)
@@ -96,7 +125,6 @@ def webhook():
     except Exception as e:
         print(f"Exception in webhook: {str(e)}")
         return {'error': str(e)}, 500
-
 
 if __name__ == '__main__':
     app.run(port=5000)

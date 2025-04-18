@@ -1,19 +1,15 @@
-
 from infrastructure.database import Database
 
 class OrderRepo:
     def __init__(self, db):
-        self.db = Database()
-        self.order_collection = self.db.get_collection('orders')
+        self.db = db
+        self.collection = self.db['orders']  # 假設使用 MongoDB
 
-    def get_orders(self):
-        return self.db.get_collection('orders').find()
-
-# add an order
     def add_order(self, order_data):
-        return self.db.get_collection('orders').insert_one(order_data)
+        self.collection.insert_one(order_data)
 
-# delete all orders
-    
-    def delete_orders(self):
-        return self.db.get_collection('orders').delete_many({})
+    def get_orders(self, user_id):
+        return list(self.collection.find({"user_id": user_id}, {"_id": 0}))
+
+    def clear_orders(self, user_id):
+        self.collection.delete_many({"user_id": user_id})
