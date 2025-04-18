@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify
 import requests
 
-# 載入 json 標準函式庫，處理回傳的資料格式
-import json
-
 # 載入 LINE Message API 相關函式庫
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
+import os
+
 
 app = Flask(__name__)
 
@@ -15,7 +14,8 @@ app = Flask(__name__)
 user_state = {}
 
 # LINE Messaging API Token
-LINE_CHANNEL_ACCESS_TOKEN = 'YOUR_CHANNEL_ACCESS_TOKEN'
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
+
 LINE_REPLY_API = 'https://api.line.me/v2/bot/message/reply'
  
 
